@@ -1,0 +1,277 @@
+import html
+import random
+
+import streamlit as st
+import streamlit.components.v1 as components
+
+
+st.set_page_config(
+    page_title="Hello, World!",
+    page_icon="✦",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+FONT_CHOICES = {
+    "Rounded sans": ("Trebuchet MS", "Arial", "sans-serif"),
+    "Classic serif": ("Georgia", "Times New Roman", "serif"),
+    "Monospace": ("Courier New", "monospace"),
+    "Handwritten": ("Brush Script MT", "Segoe Script", "cursive"),
+    "Bold display": ("Impact", "Haettenschweiler", "sans-serif"),
+    "System sans": ("Arial", "Helvetica", "sans-serif"),
+}
+
+BACKGROUND_CHOICES = {
+    "Peach sunrise": "linear-gradient(135deg, #ffe3c2 0%, #ffc6b7 48%, #f3b7d8 100%)",
+    "Blue lagoon": "linear-gradient(135deg, #c5f4ef 0%, #a5d9f5 52%, #c8c7ff 100%)",
+    "Meadow": "linear-gradient(135deg, #d8f4c7 0%, #b9e8c6 50%, #b5dfeb 100%)",
+    "Lavender dream": "linear-gradient(135deg, #e5d5ff 0%, #d6c5fa 48%, #f8cce5 100%)",
+    "Midnight sky": "linear-gradient(135deg, #172447 0%, #303c73 52%, #5a3975 100%)",
+    "Lemon fizz": "linear-gradient(135deg, #fff7bd 0%, #ffe2a6 50%, #ffc9a4 100%)",
+    "Paper white": "linear-gradient(135deg, #fffefa 0%, #f3f1eb 100%)",
+}
+
+EFFECT_CHOICES = [
+    "None",
+    "Rain",
+    "Snow",
+    "Hail",
+    "Wind gust",
+    "Confetti",
+    "Tornado",
+]
+
+
+def make_particles(effect: str) -> str:
+    """Create decorative, aria-hidden particles for the animated preview."""
+    rng = random.Random(24)
+    if effect == "Wind gust":
+        return "".join(
+            (
+                '<span class="particle wind" '
+                f'style="--y:{rng.randint(8, 92)}%;--delay:{rng.uniform(-5, 0):.2f}s;'
+                f'--duration:{rng.uniform(1.3, 2.8):.2f}s;--length:{rng.randint(35, 120)}px">'
+                "</span>"
+            )
+            for _ in range(22)
+        )
+    if effect == "Tornado":
+        return "".join(
+            (
+                '<span class="particle twister" '
+                f'style="--orbit:{rng.randint(16, 130)}px;--delay:{rng.uniform(-8, 0):.2f}s;'
+                f'--duration:{rng.uniform(2.4, 5.5):.2f}s;--size:{rng.randint(3, 8)}px">'
+                "</span>"
+            )
+            for _ in range(28)
+        )
+
+    particle_type = {
+        "Rain": "rain",
+        "Snow": "snow",
+        "Hail": "hail",
+        "Confetti": "confetti",
+    }.get(effect)
+    if not particle_type:
+        return ""
+
+    pieces = []
+    colors = ["#ff5577", "#ffc247", "#39b8ae", "#8a66e8", "#4d91f7", "#f27b46"]
+    for index in range(42):
+        color = colors[index % len(colors)] if effect == "Confetti" else "currentColor"
+        pieces.append(
+            (
+                f'<span class="particle {particle_type}" style="--x:{rng.randint(1, 99)}%;'
+                f'--delay:{rng.uniform(-9, 0):.2f}s;--duration:{rng.uniform(3.5, 8):.2f}s;'
+                f'--drift:{rng.randint(-55, 55)}px;--size:{rng.randint(5, 12)}px;'
+                f'--color:{color};--spin:{rng.randint(180, 720)}deg">'
+                "</span>"
+            )
+        )
+    return "".join(pieces)
+
+
+def preview_document(name: str, font: str, size: int, background: str, effect: str) -> str:
+    safe_name = html.escape(name, quote=True) or "Your name"
+    font_stack = ", ".join(f'"{family}"' if " " in family else family for family in FONT_CHOICES[font])
+    particles = make_particles(effect)
+    dark_background = background == "Midnight sky"
+    ink = "#fffaf0" if dark_background else "#22233b"
+    name_shadow = "0 8px 38px rgba(0, 0, 0, .24)" if dark_background else "0 8px 28px rgba(39, 30, 70, .12)"
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+* {{ box-sizing: border-box; }}
+html, body {{ margin: 0; width: 100%; height: 100%; overflow: hidden; }}
+body {{
+  font-family: Arial, sans-serif;
+  background: {background};
+  color: {ink};
+}}
+.stage {{
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 410px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(255,255,255,.48);
+  border-radius: 24px;
+}}
+.glow {{
+  position: absolute;
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.34);
+  filter: blur(2px);
+  animation: breathe 5s ease-in-out infinite;
+}}
+.name {{
+  position: relative;
+  z-index: 1;
+  max-width: 92%;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-family: {font_stack};
+  font-size: clamp(34px, {size}px, 104px);
+  line-height: 1.1;
+  font-weight: 700;
+  text-shadow: {name_shadow};
+  animation: arrive .7s cubic-bezier(.2,.8,.2,1) both;
+}}
+.caption {{
+  position: absolute;
+  bottom: 22px;
+  z-index: 3;
+  font: 600 11px/1 Arial, sans-serif;
+  letter-spacing: .19em;
+  text-transform: uppercase;
+  opacity: .6;
+}}
+.particle {{ position: absolute; pointer-events: none; }}
+.rain, .snow, .hail, .confetti {{
+  left: var(--x);
+  top: -18px;
+  z-index: 2;
+  animation: fall var(--duration) linear var(--delay) infinite;
+}}
+.rain {{
+  width: 2px; height: 17px; border-radius: 3px;
+  background: rgba(255,255,255,.74);
+  transform: rotate(13deg);
+}}
+.snow {{
+  width: var(--size); height: var(--size); border-radius: 50%;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 0 7px rgba(255,255,255,.55);
+}}
+.hail {{
+  width: var(--size); height: var(--size); border-radius: 50%;
+  background: rgba(255,255,255,.9);
+  box-shadow: inset -2px -2px 3px rgba(87,129,190,.28), 0 1px 3px rgba(31,62,96,.16);
+}}
+.confetti {{
+  width: calc(var(--size) * .65); height: var(--size);
+  background: var(--color);
+  border-radius: 2px;
+  animation-name: confetti-fall;
+}}
+.wind {{
+  right: -150px;
+  top: var(--y);
+  z-index: 2;
+  height: 2px;
+  width: var(--length);
+  border-radius: 9px;
+  background: linear-gradient(90deg, transparent, currentColor 45%, transparent);
+  opacity: .38;
+  animation: gust var(--duration) ease-in-out var(--delay) infinite;
+}}
+.twister {{
+  left: 50%;
+  top: 58%;
+  z-index: 2;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: rgba(255,255,255,.76);
+  animation: spiral var(--duration) linear var(--delay) infinite;
+}}
+@keyframes fall {{
+  0% {{ transform: translate3d(0,-24px,0); }}
+  100% {{ transform: translate3d(var(--drift),450px,0); }}
+}}
+@keyframes confetti-fall {{
+  0% {{ transform: translate3d(0,-24px,0) rotate(0); }}
+  100% {{ transform: translate3d(var(--drift),450px,0) rotate(var(--spin)); }}
+}}
+@keyframes gust {{
+  0% {{ transform: translateX(0) scaleX(.2); opacity: 0; }}
+  18% {{ opacity: .48; }}
+  100% {{ transform: translateX(-680px) scaleX(1); opacity: 0; }}
+}}
+@keyframes spiral {{
+  0% {{ transform: rotate(0deg) translateX(var(--orbit)) scale(.5); opacity: 0; }}
+  15% {{ opacity: .75; }}
+  100% {{ transform: rotate(900deg) translateX(8px) scale(1.4); opacity: 0; }}
+}}
+@keyframes breathe {{
+  0%, 100% {{ transform: scale(.88); opacity: .55; }}
+  50% {{ transform: scale(1.12); opacity: .95; }}
+}}
+@keyframes arrive {{
+  from {{ opacity: 0; transform: translateY(12px) scale(.96); }}
+  to {{ opacity: 1; transform: translateY(0) scale(1); }}
+}}
+@media (max-width: 520px) {{
+  .stage {{ height: 350px; border-radius: 18px; }}
+  .caption {{ bottom: 17px; }}
+}}
+</style>
+</head>
+<body>
+  <main class="stage" aria-label="Animated name preview">
+    <div class="glow"></div>
+    <div class="name">{safe_name}</div>
+    {particles}
+    <div class="caption">A little hello from you</div>
+  </main>
+</body>
+</html>"""
+
+
+st.title("Hello, World!")
+st.write("A tiny first app: type a name, make a few choices, and watch your greeting come to life.")
+
+name = st.text_input("What should we call you?", value="World", max_chars=40)
+left, middle, right = st.columns(3)
+with left:
+    font = st.selectbox("Font", list(FONT_CHOICES.keys()))
+with middle:
+    size_label = st.selectbox("Text size", ["Small · 40 px", "Medium · 58 px", "Large · 76 px", "Extra large · 96 px"], index=1)
+with right:
+    background_name = st.selectbox("Background", list(BACKGROUND_CHOICES.keys()))
+
+effect = st.selectbox("Add a moving effect", EFFECT_CHOICES)
+size = int(size_label.split("·")[1].replace("px", "").strip())
+
+st.subheader("Your greeting")
+components.html(
+    preview_document(
+        name=name.strip() or "Your name",
+        font=font,
+        size=size,
+        background=BACKGROUND_CHOICES[background_name],
+        effect=effect,
+    ),
+    height=430,
+    scrolling=False,
+)
+
+st.caption("Try different combinations. The animation keeps looping while the preview is open.")
